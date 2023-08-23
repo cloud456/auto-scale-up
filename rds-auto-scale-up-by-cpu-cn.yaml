@@ -1,0 +1,258 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: This cloudFormation template is used to scale up based on the CPU usage of RDS
+
+
+Parameters:
+  LambdaExecRole:
+    Type: String
+    Default: Lambda-Role-RDS-Scaleup-Role
+  LambdaFunctionName:
+    Type: String
+    Default: Lambda-Function-RDS-Scaleup
+  Threshold:
+    Type: Number
+    Default: 70
+    Description: Threshold for CPU usage,by defalut is 70%
+  InstanceType: 
+    Type: String
+    AllowedValues: 
+            - db.t4g.micro
+            - db.t4g.small
+            - db.t4g.medium
+            - db.t4g.large
+            - db.t4g.xlarge
+            - db.t4g.2xlarge
+            - db.t3.micro
+            - db.t3.small
+            - db.t3.medium
+            - db.t3.large
+            - db.t3.xlarge
+            - db.t3.2xlarge
+            - db.m7g.large
+            - db.m7g.xlarge
+            - db.m7g.2xlarge
+            - db.m7g.4xlarge
+            - db.m7g.8xlarge
+            - db.m7g.12xlarge
+            - db.m7g.16xlarge
+            - db.m6g.large
+            - db.m6g.xlarge
+            - db.m6g.2xlarge
+            - db.m6g.4xlarge
+            - db.m6g.8xlarge
+            - db.m6g.12xlarge
+            - db.m6g.16xlarge
+            - db.m6gd.large
+            - db.m6gd.xlarge
+            - db.m6gd.2xlarge
+            - db.m6gd.4xlarge
+            - db.m6gd.8xlarge
+            - db.m6gd.12xlarge
+            - db.m6gd.16xlarge
+            - db.m6i.large
+            - db.m6i.xlarge
+            - db.m6i.2xlarge
+            - db.m6i.4xlarge
+            - db.m6i.8xlarge
+            - db.m6i.12xlarge
+            - db.m6i.16xlarge
+            - db.m6i.24xlarge
+            - db.m6i.32xlarge
+            - db.m5.large
+            - db.m5.xlarge
+            - db.m5.2xlarge
+            - db.m5.4xlarge
+            - db.m5.8xlarge
+            - db.m5.12xlarge
+            - db.m5.16xlarge
+            - db.m5.24xlarge
+            - db.m5d.large
+            - db.m5d.xlarge
+            - db.m5d.2xlarge
+            - db.m5d.4xlarge
+            - db.m5d.8xlarge
+            - db.m5d.12xlarge
+            - db.m5d.16xlarge
+            - db.m5d.24xlarge
+            - db.x2g.large
+            - db.x2g.xlarge
+            - db.x2g.2xlarge
+            - db.x2g.4xlarge
+            - db.x2g.8xlarge
+            - db.x2g.12xlarge
+            - db.x2g.16xlarge
+            - db.r7g.large
+            - db.r7g.xlarge
+            - db.r7g.2xlarge
+            - db.r7g.4xlarge
+            - db.r7g.8xlarge
+            - db.r7g.12xlarge
+            - db.r7g.16xlarge
+            - db.r6g.large
+            - db.r6g.xlarge
+            - db.r6g.2xlarge
+            - db.r6g.4xlarge
+            - db.r6g.8xlarge
+            - db.r6g.12xlarge
+            - db.r6g.16xlarge
+            - db.r6gd.large
+            - db.r6gd.xlarge
+            - db.r6gd.2xlarge
+            - db.r6gd.4xlarge
+            - db.r6gd.8xlarge
+            - db.r6gd.12xlarge
+            - db.r6gd.16xlarge
+            - db.r6i.large
+            - db.r6i.xlarge
+            - db.r6i.2xlarge
+            - db.r6i.4xlarge
+            - db.r6i.8xlarge
+            - db.r6i.12xlarge
+            - db.r6i.16xlarge
+            - db.r6i.24xlarge
+            - db.r6i.32xlarge
+            - db.r5.large
+            - db.r5.xlarge
+            - db.r5.2xlarge
+            - db.r5.4xlarge
+            - db.r5.8xlarge
+            - db.r5.12xlarge
+            - db.r5.16xlarge
+            - db.r5.24xlarge
+            - db.r5b.large
+            - db.r5b.xlarge
+            - db.r5b.2xlarge
+            - db.r5b.4xlarge
+            - db.r5b.8xlarge
+            - db.r5b.12xlarge
+            - db.r5b.16xlarge
+            - db.r5b.24xlarge
+            - db.r5d.large
+            - db.r5d.xlarge
+            - db.r5d.2xlarge
+            - db.r5d.4xlarge
+            - db.r5d.8xlarge
+            - db.r5d.12xlarge
+            - db.r5d.16xlarge
+            - db.r5d.24xlarge
+
+    Description: The instance to be scale up when the CPU usage reached the threshold
+  DBInstanceName: 
+    Type: String
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: 
+          default: RDS Configuration
+        Parameters: 
+          - DBInstanceName
+          - Threshold  
+          - InstanceType
+      - Label: 
+          default: Lambda Function Configuration
+        Parameters:
+          - LambdaFunctionName
+          - LambdaExecRole
+
+
+          
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref LambdaExecRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+      Path: /
+  
+  LambdaFunctionPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Join ['-', [!Ref LambdaExecRole, 'Policy']]
+      Roles:
+          - Ref: LambdaRole
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - rds:*
+            Resource: '*'
+
+  
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Description: Scale up based on RDS and instance type.
+      Runtime: python3.9
+      Code:
+        ZipFile: |
+
+          import json
+          import boto3
+          import os
+
+
+          def lambda_handler(event, context):
+    
+              rds = boto3.client('rds')
+              response = rds.modify_db_instance(DBInstanceIdentifier=os.environ.get('DBInstanceName'), DBInstanceClass=os.environ.get('InstanceType'), ApplyImmediately=True)
+
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('update db instance successful!')
+               }
+      Handler: index.lambda_handler
+      MemorySize: 128
+      Timeout: 10
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          DBInstanceName: !Ref DBInstanceName
+          InstanceType: !Ref InstanceType
+          
+  NotificationSNSTopic: 
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-AlarmNotification'
+      Subscription:
+        - Endpoint: !GetAtt LambdaFunction.Arn
+          Protocol: LAMBDA
+  
+  LambdaFunctionInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref LambdaFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref NotificationSNSTopic
+          
+  MemoryUsageAlarmHigh: 
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties: 
+      AlarmDescription: Scale-up if CPU is greater than Threshold for 10 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Statistic: Average
+      Dimensions: 
+        - Name: DBInstanceIdentifier
+          Value: !Ref DBInstanceName
+      Period: '300'
+      EvaluationPeriods: '2'
+      Threshold: !Ref Threshold
+      AlarmActions:
+         - !Ref NotificationSNSTopic
+      ComparisonOperator: GreaterThanThreshold         
+            
